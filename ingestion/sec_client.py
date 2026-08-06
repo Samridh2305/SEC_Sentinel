@@ -7,7 +7,7 @@ class SECClient:
 
     def __init__(self):
         self.headers = {
-            "User-Agent": "Samridh samridh2305@example.com"
+            "User-Agent": "Samridh samridh2305@gmail.com"
         }
         self.companies =self._load_companies()
 

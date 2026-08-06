@@ -1,3 +1,5 @@
+import re
+
 from bs4 import BeautifulSoup
 
 
@@ -9,6 +11,28 @@ class XBRLCleaner:
     ) -> BeautifulSoup:
 
         return soup
+
+    def clean_text(self, text: str, company_name: str, form_type: str,
+                   filing_year: int
+                   ) -> str:
+
+        page_header_pattern = re.compile(
+            rf"{re.escape(company_name)}"
+            rf"\s*\|\s*" rf"{filing_year}" 
+            rf"\s+Form\s+{re.escape(form_type)}"
+            rf"\s*\|\s*\d+", re.IGNORECASE
+        )
+
+        text = page_header_pattern.sub( "", text )
+
+        text = re.sub(
+            r"[ \t]+", " ", text
+        )
+        text = re.sub(
+            r"\n\s*\n+", "\n\n", text
+        )
+
+        return text.strip()
 
     def inspect_tags(
             self,

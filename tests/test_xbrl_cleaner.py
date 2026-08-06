@@ -38,23 +38,26 @@ def test_extract_visible_text(filing_text):
     assert len(filing_text) > 0
 
 
-def test_extract_sections():
+def test_extract_sections(filing_text):
 
-    parser = FilingParser()
-    extractor = SectionExtractor()
-
-    soup = parser.parse(
-        Path("data/raw/filings/aapl-20250927.htm")
+    cleaned_text = cleaner.clean_text(
+        text=filing_text,
+        company_name="Apple Inc.",
+        form_type="10-K",
+        filing_year=2025
     )
 
-    soup = parser.clean(soup)
+    sections = extractor.extract_sections(
+        cleaned_text
+    )
 
-    text = parser.extract_visible_text(soup)
+    assert "Business" in sections
 
-    sections = extractor.extract_sections(text)
+    assert "Risk Factors" in sections
 
-    print(sections.keys())
+    assert (
+        "Management Discussion and Analysis"
+        in sections
+    )
 
-    assert "Item 1." in sections
-    assert "Item 1A." in sections
-    assert "Item 7." in sections
+    assert "Financial Statements" in sections

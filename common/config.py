@@ -29,5 +29,6 @@ class Settings:
         "data/raw/filings"
     )
 
+    DATABASE_URL=os.getenv("DATABASE_URL")
 
 settings = Settings()

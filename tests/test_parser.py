@@ -18,6 +18,7 @@ def test_extract_text():
 
     assert len(text) > 0
     print(text[:3000])
+
 def test_parse():
     soup = parser.parse(
         Path("data/raw/filings/aapl-20250927.htm")
