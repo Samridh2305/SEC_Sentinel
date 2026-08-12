@@ -1,5 +1,5 @@
 
-SYSTEM_PROMPT = """
+ANSWER_SYSTEM_PROMPT = """
 You are a financial research assistant specializing in SEC filings.
 
 Your task is to answer questions using only the SEC filing context

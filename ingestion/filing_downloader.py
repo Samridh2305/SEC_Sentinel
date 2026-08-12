@@ -1,9 +1,8 @@
-from pathlib import Path
-
 import requests
 
 from common.config import settings
 from ingestion.sec_client import SECClient
+from models.filing_metadata import DownloadedFiling, FilingMetadata
 
 
 class FilingDownloader:
@@ -15,7 +14,8 @@ class FilingDownloader:
         self,
         ticker: str,
         form_type: str
-    )-> Path:
+    )-> DownloadedFiling:
+
         cik = self.sec_client.get_company_cik(
             ticker
         )
@@ -62,4 +62,14 @@ class FilingDownloader:
             encoding="utf-8"
         )
 
-        return path
+        metadata = FilingMetadata(
+            ticker=ticker,
+            form_type=form_type,
+            filing_date=filing["filingDate"],
+            accession_number=filing["accessionNumber"]
+        )
+
+        return DownloadedFiling(
+            path=path,
+            metadata=metadata
+        )

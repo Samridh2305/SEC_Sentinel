@@ -92,34 +92,6 @@ def test_generate_answer():
         assert answer.sources == chunks
 
 
-        # 10. Print answer
-
-        print(
-            "\n\nGenerated Answer:\n"
-        )
-
-        print(
-            answer.text
-        )
-
-
-        # 11. Print sources
-
-        print(
-            "\n\nSources:\n"
-        )
-
-        for source in answer.sources:
-
-            print(
-                f"{source.ticker} | "
-                f"{source.form_type} | "
-                f"{source.filing_date} | "
-                f"{source.section} | "
-                f"Chunk {source.chunk_index}"
-            )
-
-
     finally:
 
         session.close()

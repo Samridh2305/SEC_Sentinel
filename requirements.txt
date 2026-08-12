@@ -1,2 +1,5 @@
 
 requests
+sqlalchemy
+pydantic
+fastapi

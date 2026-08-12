@@ -14,7 +14,10 @@ EIGHT_K_PATTERN = re.compile(
     r"\bItem\s+\d+\.\d+",
     re.IGNORECASE
 )
-
+PART_PATTERN = re.compile(
+    r"\bPART\s+(I|II)\b",
+    re.IGNORECASE
+)
 
 TEN_K_SECTIONS = {
     "item 1.": "Business",
@@ -43,13 +46,18 @@ TEN_K_SECTIONS = {
 }
 
 TEN_Q_SECTIONS = {
-    "item 1.": "Financial Statements",
-    "item 2.": "Management Discussion and Analysis",
-    "item 3.": "Market Risk",
-    "item 4.": "Controls and Procedures",
-    "item 1a.": "Risk Factors",
-    "item 5.": "Other Information",
-    "item 6.": "Exhibits",
+    "part i item 1.": "Financial Statements",
+    "part i item 2.": "Management Discussion and Analysis",
+    "part i item 3.": "Market Risk",
+    "part i item 4.": "Controls and Procedures",
+
+    "part ii item 1.": "Legal Proceedings",
+    "part ii item 1a.": "Risk Factors",
+    "part ii item 2.": "Unregistered Sales of Equity Securities and Use of Proceeds",
+    "part ii item 3.": "Defaults Upon Senior Securities",
+    "part ii item 4.": "Mine Safety Disclosures",
+    "part ii item 5.": "Other Information",
+    "part ii item 6.": "Exhibits",
 }
 
 EIGHT_K_SECTIONS = {
@@ -64,35 +72,16 @@ EIGHT_K_SECTIONS = {
 }
 
 FORM_CONFIG = {
-
     "10-K": {
-
         "pattern": TEN_K_PATTERN,
-
         "sections": TEN_K_SECTIONS,
-
-        "toc_marker": "Business"
-
     },
-
     "10-Q": {
-
         "pattern": TEN_Q_PATTERN,
-
         "sections": TEN_Q_SECTIONS,
-
-        "toc_marker": "PART I"
-
     },
-
     "8-K": {
-
         "pattern": EIGHT_K_PATTERN,
-
         "sections": EIGHT_K_SECTIONS,
-
-        "toc_marker": None
-
     }
-
 }

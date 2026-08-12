@@ -50,7 +50,7 @@ class IngestionPipeline:
         # 4. Extract SEC sections
         sections = (
             self.section_extractor
-            .extract_sections(text)
+            .extract_sections(text=text,form_type=metadata.form_type)
         )
 
         # 5. Split sections into chunks

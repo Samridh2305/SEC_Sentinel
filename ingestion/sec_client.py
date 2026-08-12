@@ -22,38 +22,73 @@ class SECClient:
 
         return response.json()
 
-    def get_company_cik(self, ticker: str) -> str:
+    def get_company_cik(
+            self,
+            ticker: str
+    ) -> str:
 
         ticker = ticker.upper()
 
         for company in self.companies.values():
 
             if company["ticker"] == ticker:
-
                 cik = str(company["cik_str"])
 
-                return cik.zfill(10) #SEC expects 10 digits so her we fill remaining digits with zero
+                return cik.zfill(10)
 
-        raise ValueError(f"Ticker {ticker} not found.")
+        raise ValueError(
+            f"Ticker {ticker} not found."
+        )
 
-    def get_company_submissions(self, cik: str) -> dict:
-         url=settings.SEC_SUBMISSIONS_URL.format(
-             cik=cik
-         )
+    def search_company(
+        self,
+        company_name: str
+    ) -> list[dict]:
 
-         response= requests.get(
-             url,
-             headers=self.headers,
-             timeout=30
-         )
-         response.raise_for_status()
-         return response.json()
+        search_term = company_name.lower()
+
+        results = []
+
+        for company in self.companies.values():
+
+            title = company["title"]
+
+            if search_term in title.lower():
+
+                results.append({
+                    "company": title,
+                    "ticker": company["ticker"],
+                    "cik": str(
+                        company["cik_str"]
+                    ).zfill(10)
+                })
+
+        return results
+
+    def get_company_submissions(
+        self,
+        cik: str
+    ) -> dict:
+
+        url = settings.SEC_SUBMISSIONS_URL.format(
+            cik=cik
+        )
+
+        response = requests.get(
+            url,
+            headers=self.headers,
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+        return response.json()
 
 
     def get_latest_filing(
-            self,
-            cik: str,
-            form_type: str
+        self,
+        cik: str,
+        form_type: str
     ):
 
         submissions = self.get_company_submissions(cik)

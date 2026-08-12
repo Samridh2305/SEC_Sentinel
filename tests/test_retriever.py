@@ -48,25 +48,7 @@ def test_retrieve_relevant_chunks():
         assert len(results) <= 5
 
 
-        # 5. Print results
 
-        for result in results:
-
-            print(
-                "\n"
-                "Section:",
-                result.section
-            )
-
-            print(
-                "Chunk:",
-                result.chunk_index
-            )
-
-            print(
-                "Text:",
-                result.text[:500]
-            )
 
     finally:
 

@@ -1,46 +1,35 @@
-import re
 from collections import defaultdict
+
+from models.section_match import SectionMatch
+from services.classes import FORM_CONFIG, PART_PATTERN
 
 
 class SectionExtractor:
 
-    SECTION_PATTERN = re.compile(
-        r"\bItem\s+\d+[A-Z]?\.",
-        re.IGNORECASE
-    )
+    def _get_filing_config(
+            self,
+            form_type: str
+    ):
+        try:
+            return FORM_CONFIG[form_type]
 
-    SECTION_NAMES = {
-        "item 1.": "Business",
-        "item 1a.": "Risk Factors",
-        "item 1b.": "Unresolved Staff Comments",
-        "item 1c.": "Cybersecurity",
-        "item 2.": "Properties",
-        "item 3.": "Legal Proceedings",
-        "item 4.": "Mine Safety Disclosures",
-        "item 5.": "Market for Registrant's Common Equity",
-        "item 6.": "Selected Financial Data",
-        "item 7.": "Management Discussion and Analysis",
-        "item 7a.": "Market Risk",
-        "item 8.": "Financial Statements",
-        "item 9.": "Changes in Accountants",
-        "item 9a.": "Controls and Procedures",
-        "item 9b.": "Other Information",
-        "item 9c.": "Foreign Jurisdictions",
-        "item 10.": "Directors and Executive Officers",
-        "item 11.": "Executive Compensation",
-        "item 12.": "Security Ownership",
-        "item 13.": "Related Party Transactions",
-        "item 14.": "Principal Accounting Fees",
-        "item 15.": "Exhibits",
-        "item 16.": "Form 10-K Summary",
-    }
+        except KeyError:
+            raise ValueError(
+                f"Unsupported form type: {form_type}"
+            )
 
     def extract_sections(
         self,
-        text: str
+        text: str,
+        form_type:str
     ) -> dict[str, str]:
 
-        matches = self._find_matches(text)
+        config=self._get_filing_config(form_type)
+
+        pattern=config["pattern"]
+        section_names=config["sections"]
+
+        matches = self._find_matches(text,pattern,form_type)
 
         real_matches = self._select_real_matches(
             matches
@@ -48,19 +37,83 @@ class SectionExtractor:
 
         sections = self._slice_sections(
             text,
-            real_matches
+            real_matches,
+            section_names
         )
 
         return sections
 
     def _find_matches(
-        self,
-        text: str
+            self,
+            text: str,
+            pattern,
+            form_type: str
     ):
+        # 10-K and 8-K
+        if form_type != "10-Q":
 
-        return list(
-            self.SECTION_PATTERN.finditer(text)
+            matches = []
+
+            for match in pattern.finditer(text):
+                matches.append(
+                    SectionMatch(
+                        match=match,
+                        lookup_key=match.group().lower()
+                    )
+                )
+
+            return matches
+
+        # 10-Q
+        current_part = None
+
+        part_matches = list(
+            PART_PATTERN.finditer(text)
         )
+
+        item_matches = list(
+            pattern.finditer(text)
+        )
+
+        events = []
+
+        # Add PART headings
+        for match in part_matches:
+            events.append(
+                ("part", match)
+            )
+
+        # Add ITEM headings
+        for match in item_matches:
+            events.append(
+                ("item", match)
+            )
+
+        # Sort by position in document
+        events.sort(
+            key=lambda event: event[1].start()
+        )
+
+        matches = []
+
+        for event_type, match in events:
+
+            if event_type == "part":
+                current_part = match.group().lower()
+                continue
+
+            lookup_key = (
+                f"{current_part} {match.group().lower()}"
+            )
+
+            matches.append(
+                SectionMatch(
+                    match=match,
+                    lookup_key=lookup_key
+                )
+            )
+
+        return matches
 
     def _select_real_matches(
         self,
@@ -72,12 +125,10 @@ class SectionExtractor:
         for match in matches:
 
             normalized_section = (
-                match.group().lower()
+                match.lookup_key
             )
 
-            groups[
-                normalized_section
-            ].append(match)
+            groups[normalized_section].append(match)
 
         real_matches = []
 
@@ -88,7 +139,7 @@ class SectionExtractor:
             )
 
         real_matches.sort(
-            key=lambda match: match.start()
+            key=lambda match: match.match.start()
         )
 
         return real_matches
@@ -96,8 +147,9 @@ class SectionExtractor:
     def _slice_sections(
         self,
         text: str,
-        matches
-    ) -> dict[str, str]:
+        matches,
+        section_names
+    ):
 
         sections = {}
 
@@ -105,35 +157,20 @@ class SectionExtractor:
 
             current = matches[i]
 
-            start = current.start()
+            start = current.match.start()
 
             if i == len(matches) - 1:
-
                 end = len(text)
-
             else:
+                end = matches[i + 1].match.start()
 
-                end = matches[
-                    i + 1
-                ].start()
+            section_text = text[start:end]
 
-            section_text = text[
-                start:end
-            ]
-
-            normalized_section = (
-                current.group().lower()
+            section_name = section_names.get(
+                current.lookup_key,
+                current.match.group().strip()
             )
 
-            section_name = (
-                self.SECTION_NAMES.get(
-                    normalized_section,
-                    current.group().strip()
-                )
-            )
-
-            sections[
-                section_name
-            ] = section_text.strip()
+            sections[section_name] = section_text.strip()
 
         return sections

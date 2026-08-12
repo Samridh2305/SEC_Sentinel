@@ -5,7 +5,7 @@ from db.models.filing_chunk import FilingChunk
 from models.answer import Answer
 from prompts.answer_prompt import (
     ANSWER_PROMPT,
-    SYSTEM_PROMPT
+    ANSWER_SYSTEM_PROMPT
 )
 
 
@@ -46,7 +46,7 @@ class AnswerGenerator:
 
         response = self.client.responses.create(
             model=self.model,
-            instructions=SYSTEM_PROMPT,
+            instructions=ANSWER_SYSTEM_PROMPT,
             input=user_prompt
         )
 

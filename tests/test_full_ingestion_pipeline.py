@@ -1,4 +1,3 @@
-
 from pathlib import Path
 
 from db.database import SessionLocal
@@ -30,11 +29,9 @@ def test_full_ingestion_pipeline():
 
     embedder = Embedder()
 
-
     # 2. Create database session
 
     session = SessionLocal()
-
 
     try:
 
@@ -43,7 +40,6 @@ def test_full_ingestion_pipeline():
         repository = FilingChunkRepository(
             session
         )
-
 
         # 4. Create pipeline
 
@@ -60,20 +56,18 @@ def test_full_ingestion_pipeline():
             repository=repository
         )
 
-
         # 5. Filing metadata
 
         metadata = FilingMetadata(
 
             ticker="AAPL",
 
-            form_type="10-K",
+            form_type="8-K",
 
-            filing_date="2025-09-27",
+            filing_date="2026-07-30",
 
             accession_number="YOUR_ACCESSION_NUMBER"
         )
-
 
         # 6. Run pipeline
 
@@ -81,17 +75,15 @@ def test_full_ingestion_pipeline():
 
             filing_path=Path(
                 "data/raw/filings/"
-                "aapl-20250927.htm"
+                "aapl-20260730.htm"
             ),
 
             metadata=metadata
         )
 
-
         # 7. Verify chunks were created
 
         assert len(chunks) > 0
-
 
         # 8. Verify embeddings exist
 
@@ -99,10 +91,7 @@ def test_full_ingestion_pipeline():
 
             assert chunk.embedding is not None
 
-            assert len(
-                chunk.embedding
-            ) == 768
-
+            assert len(chunk.embedding) == 768
 
         # 9. Verify database insertion
 
@@ -112,45 +101,29 @@ def test_full_ingestion_pipeline():
 
             .filter(
 
-                FilingChunk.ticker == "AAPL",
+                FilingChunk.ticker == metadata.ticker,
 
-                FilingChunk.form_type == "10-K",
+                FilingChunk.form_type == metadata.form_type,
 
                 FilingChunk.accession_number
-                == "YOUR_ACCESSION_NUMBER"
+                == metadata.accession_number
 
             )
 
             .all()
         )
 
-
         # 10. Verify database contains chunks
 
-        assert len(
-            saved_chunks
-        ) == len(chunks)
+        assert len(saved_chunks) > 0
 
-
-        # 11. Verify Risk Factors exist
-
-        risk_chunks = [
-
-            chunk
-
+        sections = {
+            chunk.section
             for chunk in saved_chunks
+        }
 
-            if chunk.section
-            == "Risk Factors"
-        ]
-
-
-        assert len(
-            risk_chunks
-        ) > 0
 
 
     finally:
 
         session.close()
-

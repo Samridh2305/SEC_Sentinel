@@ -17,7 +17,7 @@ def test_get_latest_filing():
 
     filing = client.get_latest_filing(
         cik,
-        "10-K"
+        "10-Q"
     )
 
     assert "accessionNumber" in filing

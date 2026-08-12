@@ -57,29 +57,3 @@ def test_chunk_aapl_filing():
 
     assert len(risk_chunks) > 0
 
-    # 9. Check chunk metadata
-    for chunk in risk_chunks:
-        print("\n" + "=" * 80)
-
-        print(
-            f"Chunk ID: {chunk.id}"
-        )
-
-        print(
-            f"Section: {chunk.section}"
-        )
-
-        print(
-            f"Chunk Index: {chunk.chunk_index}"
-        )
-
-        print(
-            f"Characters: {len(chunk.text)}"
-        )
-
-        print("-" * 80)
-
-        print(chunk.text)
-
-        print("=" * 80)
-
