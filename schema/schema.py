@@ -6,6 +6,7 @@ class AnswerRequest(BaseModel):
     form_type: str
     filing_date: str
     query: str
+    section: str | None = None
 
 class AnswerResponse(BaseModel):
     answer:str
@@ -23,6 +24,13 @@ class ComparisonResponse(BaseModel):
 class FilingDownloadRequest(BaseModel):
     ticker: str
     form_type: str
+    filing_date: str | None = None
+
+class FilingInfo(BaseModel):
+    form_type: str
+    filing_date: str
+    accession_number: str
+    primary_document: str
 
 class FilingDownloadResponse(BaseModel):
     ticker: str

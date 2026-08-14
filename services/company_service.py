@@ -13,6 +13,15 @@ class CompanyService:
         self,
         company_name: str
     ):
-        return self.sec_client.search_company(
+
+        results = self.sec_client.search_company(
             company_name
         )
+
+        if not results:
+            raise ValueError(
+                f"No SEC company found matching "
+                f"'{company_name}'."
+            )
+
+        return results

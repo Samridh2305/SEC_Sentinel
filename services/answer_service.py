@@ -17,14 +17,15 @@ class AnswerService:
             ticker: str,
             form_type: str,
             filing_date: str,
+            section:str,
             query: str
     ):
-        chunks = (
-            self.retriever.retrieve(
-                ticker=ticker,
-                form_type=form_type,
-                filing_date=filing_date,
-            )
+        chunks = self.retriever.retrieve(
+            query=query,
+            ticker=ticker,
+            form_type=form_type,
+            filing_date=filing_date,
+            section=section,
         )
         return self.answer_generator.generate_answer(
             query=query,

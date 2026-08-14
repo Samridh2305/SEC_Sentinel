@@ -39,7 +39,8 @@ def answer(
         ticker=request.ticker,
         form_type=request.form_type,
         filing_date=request.filing_date,
-        query=request.query
+        query=request.query,
+        section=request.section
     )
 
     return AnswerResponse(

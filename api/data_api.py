@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+    HTTPException
+)
 
 from db.database import SessionLocal
 from db.repositories.filing_chunk_repository import (
@@ -18,7 +21,7 @@ from services.filing_service import FilingService
 
 from schema.schema import (
     FilingDownloadRequest,
-    FilingDownloadResponse
+    FilingDownloadResponse, FilingInfo
 )
 
 router = APIRouter(
@@ -56,7 +59,8 @@ pipeline = IngestionPipeline(
 
 filing_service = FilingService(
     downloader=downloader,
-    pipeline=pipeline
+    pipeline=pipeline,
+    sec_client=sec_client
 )
 
 @router.post(
@@ -67,13 +71,45 @@ def download_filing(
     request: FilingDownloadRequest
 ):
 
-    result = filing_service.download_and_ingest(
-        ticker=request.ticker,
-        form_type=request.form_type
-    )
+    try:
 
-    return FilingDownloadResponse(
-        **result,
-        message="Filing downloaded and ingested successfully."
-    )
+        result = filing_service.download_and_ingest(
+            ticker=request.ticker,
+            form_type=request.form_type,
+            filing_date=request.filing_date
+        )
 
+        return FilingDownloadResponse(
+            **result,
+            message="Filing downloaded and ingested successfully."
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
+
+@router.get(
+    "/available",
+    response_model=list[FilingInfo]
+)
+def get_available_filings(
+    ticker: str,
+    form_type: str
+):
+
+    try:
+
+        return filing_service.get_available_filings(
+            ticker=ticker,
+            form_type=form_type
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )

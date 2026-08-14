@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from db.models.filing_chunk import FilingChunk
@@ -20,6 +22,7 @@ class VectorRetriever:
         ticker: str | None = None,
         form_type: str | None = None,
         filing_date: str | None = None,
+        section: str | None = None,
         top_k: int = 5
     ) -> list[FilingChunk]:
 
@@ -45,11 +48,21 @@ class VectorRetriever:
 
         #5. filing_date filler
         if filing_date:
+            filing_date = datetime.strptime(
+                filing_date,
+                "%Y-%m-%d"
+            ).date()
             db_query = db_query.filter(
                 FilingChunk.filing_date == filing_date
             )
 
-        # 6. Perform cosine similarity search
+        # 6. filing_date filler
+        if section:
+            db_query = db_query.filter(
+                FilingChunk.section == section
+            )
+
+        # 7. Perform cosine similarity search
         results = (
             db_query
             .order_by(
@@ -61,5 +74,5 @@ class VectorRetriever:
             .all()
         )
 
-        # 7. Return most relevant chunks
+        # 8. Return most relevant chunks
         return results

@@ -73,3 +73,76 @@ class FilingDownloader:
             path=path,
             metadata=metadata
         )
+
+    def download_filing(
+            self,
+            ticker: str,
+            form_type: str,
+            filing_date: str
+    ) -> DownloadedFiling:
+        cik = self.sec_client.get_company_cik(
+            ticker
+        )
+
+        filing = self.sec_client.get_filing(
+            cik=cik,
+            form_type=form_type,
+            filing_date=filing_date
+        )
+
+        accession_number = (
+            filing["accessionNumber"]
+            .replace("-", "")
+        )
+
+        primary_document = filing["primaryDocument"]
+
+        url = (
+            f"{settings.SEC_ARCHIVES_URL}"
+            f"{int(cik)}/"
+            f"{accession_number}/"
+            f"{primary_document}"
+        )
+
+        response = requests.get(
+            url,
+            headers=self.sec_client.headers,
+            timeout=30
+        )
+
+        response.raise_for_status()
+
+        settings.RAW_FILINGS_DIR.mkdir(
+            parents=True,
+            exist_ok=True
+        )
+
+        # Include date to avoid overwriting another filing
+        file_name = (
+            f"{ticker.upper()}_"
+            f"{form_type}_"
+            f"{filing_date}_"
+            f"{primary_document}"
+        )
+
+        path = (
+                settings.RAW_FILINGS_DIR /
+                file_name
+        )
+
+        path.write_text(
+            response.text,
+            encoding="utf-8"
+        )
+
+        metadata = FilingMetadata(
+            ticker=ticker.upper(),
+            form_type=form_type,
+            filing_date=filing["filingDate"],
+            accession_number=filing["accessionNumber"]
+        )
+
+        return DownloadedFiling(
+            path=path,
+            metadata=metadata
+        )

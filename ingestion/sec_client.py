@@ -107,3 +107,67 @@ class SECClient:
         raise ValueError(
             f"No {form_type} filing found."
         )
+
+    def get_filing(
+            self,
+            cik: str,
+            form_type: str,
+            filing_date: str
+    ):
+        submissions = self.get_company_submissions(cik)
+
+        recent = submissions["filings"]["recent"]
+
+        for index, form in enumerate(recent["form"]):
+
+            if (
+                    form == form_type
+                    and recent["filingDate"][index] == filing_date
+            ):
+                return {
+                    "form": form,
+                    "filingDate": recent["filingDate"][index],
+                    "accessionNumber": recent["accessionNumber"][index],
+                    "primaryDocument": recent["primaryDocument"][index]
+                }
+
+        raise ValueError(
+            f"No {form_type} filing found for {filing_date}."
+        )
+
+    def get_all_filings(
+            self,
+            ticker: str,
+            form_type: str
+    ) -> list[dict]:
+
+        cik = self.get_company_cik(
+            ticker
+        )
+
+        submissions = self.get_company_submissions(
+            cik
+        )
+
+        recent = submissions["filings"]["recent"]
+
+        results = []
+
+        for index, form in enumerate(
+                recent["form"]
+        ):
+
+            if form == form_type:
+                results.append({
+                    "form_type": form,
+                    "filing_date": recent["filingDate"][index],
+                    "accession_number": recent["accessionNumber"][index],
+                    "primary_document": recent["primaryDocument"][index]
+                })
+
+        if not results:
+            raise ValueError(
+                f"No {form_type} filings found for {ticker}."
+            )
+
+        return results

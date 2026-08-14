@@ -1,4 +1,7 @@
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+    HTTPException
+)
 
 from ingestion.sec_client import SECClient
 from services.company_service import CompanyService
@@ -24,6 +27,16 @@ company_service = CompanyService(
 def search_company(
     name: str
 ):
-    return company_service.search_company(
-        company_name=name
-    )
+
+    try:
+
+        return company_service.search_company(
+            company_name=name
+        )
+
+    except ValueError as e:
+
+        raise HTTPException(
+            status_code=404,
+            detail=str(e)
+        )
