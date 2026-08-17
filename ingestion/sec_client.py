@@ -9,7 +9,12 @@ class SECClient:
         self.headers = {
             "User-Agent": "Samridh samridh2305@gmail.com"
         }
-        self.companies =self._load_companies()
+        self.companies: dict | None = None
+
+    def _get_companies(self) -> dict:
+        if self.companies is None:
+            self.companies = self._load_companies()
+        return self.companies
 
     def _load_companies(self) -> dict:
 
@@ -29,7 +34,7 @@ class SECClient:
 
         ticker = ticker.upper()
 
-        for company in self.companies.values():
+        for company in self._get_companies().values():
 
             if company["ticker"] == ticker:
                 cik = str(company["cik_str"])
@@ -49,7 +54,7 @@ class SECClient:
 
         results = []
 
-        for company in self.companies.values():
+        for company in self._get_companies().values():
 
             title = company["title"]
 

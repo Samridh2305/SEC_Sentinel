@@ -1,87 +1,61 @@
 from fastapi import (
     APIRouter,
-    HTTPException
+    HTTPException,
+    BackgroundTasks,
+    Depends,
+    status,
 )
+from sqlalchemy.orm import Session
 
-from db.database import SessionLocal
-from db.repositories.filing_chunk_repository import (
-    FilingChunkRepository
-)
-
-from ingestion.sec_client import SECClient
+from db.database import get_db
+from db.repositories.ingestion_job_repository import IngestionJobRepository
 from ingestion.filing_downloader import FilingDownloader
-from ingestion.ingestion_pipeline import IngestionPipeline
-
-from extraction.filing_parser import FilingParser
-from extraction.section_extractor import SectionExtractor
-from ingestion.chunker import Chunker
-from embeddings.embedder import Embedder
-
-from services.filing_service import FilingService
-
+from ingestion.sec_client import SECClient
 from schema.schema import (
     FilingDownloadRequest,
-    FilingDownloadResponse, FilingInfo
+    FilingInfo,
+    IngestionJobResponse,
 )
+from services.filing_service import FilingService
+from services.ingestion_job_worker import run_ingestion_job
 
 router = APIRouter(
     prefix="/filings",
     tags=["Filings"]
 )
 
-session = SessionLocal()
-
 sec_client = SECClient()
 
 downloader = FilingDownloader(
     sec_client=sec_client
 )
-
-parser = FilingParser()
-
-section_extractor = SectionExtractor()
-
-chunker = Chunker()
-
-embedder = Embedder()
-
-repository = FilingChunkRepository(
-    session=session
-)
-
-pipeline = IngestionPipeline(
-    parser=parser,
-    section_extractor=section_extractor,
-    chunker=chunker,
-    embedder=embedder,
-    repository=repository
-)
-
-filing_service = FilingService(
-    downloader=downloader,
-    pipeline=pipeline,
-    sec_client=sec_client
-)
-
 @router.post(
     "/download",
-    response_model=FilingDownloadResponse
+    response_model=IngestionJobResponse,
+    status_code=status.HTTP_202_ACCEPTED,
 )
 def download_filing(
-    request: FilingDownloadRequest
+    request: FilingDownloadRequest,
+    background_tasks: BackgroundTasks,
+    session: Session = Depends(get_db)
 ):
-
     try:
+        jobs = IngestionJobRepository(session)
 
-        result = filing_service.download_and_ingest(
+        job = jobs.create(
             ticker=request.ticker,
             form_type=request.form_type,
-            filing_date=request.filing_date
+            filing_date=request.filing_date,
         )
 
-        return FilingDownloadResponse(
-            **result,
-            message="Filing downloaded and ingested successfully."
+        background_tasks.add_task(run_ingestion_job, job.id)
+
+        return IngestionJobResponse(
+            job_id=job.id,
+            status=job.status,
+            ticker=job.ticker,
+            form_type=job.form_type,
+            requested_filing_date=job.requested_filing_date,
         )
 
     except ValueError as e:
@@ -91,6 +65,34 @@ def download_filing(
             detail=str(e)
         )
 
+
+@router.get(
+    "/jobs/{job_id}",
+    response_model=IngestionJobResponse,
+)
+def get_ingestion_job(
+    job_id: str,
+    session: Session = Depends(get_db),
+):
+    job = IngestionJobRepository(session).get(job_id)
+
+    if job is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Ingestion job not found."
+        )
+
+    return IngestionJobResponse(
+        job_id=job.id,
+        status=job.status,
+        ticker=job.ticker,
+        form_type=job.form_type,
+        requested_filing_date=job.requested_filing_date,
+        accession_number=job.accession_number,
+        chunks_created=job.chunks_created,
+        error_message=job.error_message,
+    )
+
 @router.get(
     "/available",
     response_model=list[FilingInfo]
@@ -99,6 +101,12 @@ def get_available_filings(
     ticker: str,
     form_type: str
 ):
+
+    filing_service = FilingService(
+        downloader=downloader,
+        pipeline=None,
+        sec_client=sec_client
+    )
 
     try:
 

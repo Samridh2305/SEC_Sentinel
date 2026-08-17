@@ -1,6 +1,6 @@
 from datetime import date
 
-from sqlalchemy import String, Text, Integer, Date
+from sqlalchemy import Date, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column
 
 from pgvector.sqlalchemy import Vector
@@ -11,6 +11,14 @@ from db.database import Base
 class FilingChunk(Base):
 
     __tablename__ = "filing_chunks"
+    __table_args__ = (
+        UniqueConstraint(
+            "accession_number",
+            "section",
+            "chunk_index",
+            name="uq_filing_chunks_accession_section_index",
+        ),
+    )
 
     id: Mapped[int] = mapped_column(
         primary_key=True

@@ -1,6 +1,9 @@
-from fastapi import APIRouter
-
-from db.database import SessionLocal
+from fastapi import (
+    APIRouter,
+    Depends
+)
+from sqlalchemy.orm import Session
+from db.database import get_db
 from db.repositories.filing_chunk_repository import FilingChunkRepository
 
 from embeddings.embedder import Embedder
@@ -20,81 +23,53 @@ from schema.schema import (
     AnswerResponse
 )
 
-
 router = APIRouter(
     tags=["AI"]
 )
 
-
-# -------------------------
-# Database
-# -------------------------
-
-session = SessionLocal()
-
-
-# -------------------------
-# Embedding / Retrieval
-# -------------------------
+# Embedding
 
 embedder = Embedder()
 
-retriever = VectorRetriever(
-    session=session,
-    embedder=embedder
-)
-
-
-# -------------------------
-# Answer service
-# -------------------------
-
 answer_generator = AnswerGenerator()
 
-answer_service = AnswerService(
-    retriever=retriever,
-    answer_generator=answer_generator
-)
-
-
-# -------------------------
-# Comparison service
-# -------------------------
-
 comparison_generator = ComparisonGenerator()
-
-repository = FilingChunkRepository(
-    session=session
-)
-
-comparison_service = ComparisonService(
-    repository=repository,
-    comparison_generator=comparison_generator
-)
-
-
-# -------------------------
-# LangGraph
-# -------------------------
-
-graph = build_graph(
-    answer_service=answer_service,
-    comparison_service=comparison_service
-)
-
-
-# -------------------------
-# API
-# -------------------------
 
 @router.post(
     "/ask",
     response_model=AnswerResponse
 )
 def ask(
-    request: AnswerRequest
+    request: AnswerRequest,
+    session: Session= Depends(get_db)
 ):
+    retriever = VectorRetriever(
+        session=session,
+        embedder=embedder
+    )
 
+    # Answer service
+
+    answer_service = AnswerService(
+        retriever=retriever,
+        answer_generator=answer_generator
+    )
+
+    repository = FilingChunkRepository(
+        session=session
+    )
+
+    # Comparison service
+
+    comparison_service = ComparisonService(
+        repository=repository,
+        comparison_generator=comparison_generator
+    )
+
+    graph = build_graph(
+        answer_service=answer_service,
+        comparison_service=comparison_service
+    )
     result = graph.invoke(
         {
             "ticker": request.ticker,

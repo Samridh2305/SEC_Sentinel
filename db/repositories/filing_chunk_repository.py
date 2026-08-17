@@ -1,6 +1,7 @@
 from datetime import datetime
 
 from sqlalchemy.orm import Session
+from sqlalchemy.dialects.postgresql import insert
 
 from db.models.filing_chunk import FilingChunk
 from models.chunk import Chunk
@@ -14,32 +15,46 @@ class FilingChunkRepository:
     def save_chunks(
         self,
         chunks: list[Chunk]
-    ) -> None:
+    ) -> int:
+        """Save chunks once; repeated ingestion skips existing chunks."""
+        if not chunks:
+            return 0
 
-        filing_chunks = []
+        rows = [
+            {
+                "ticker": chunk.ticker,
+                "form_type": chunk.form_type,
+                "filing_date": datetime.strptime(
+                    chunk.filing_date, "%Y-%m-%d"
+                ).date(),
+                "accession_number": chunk.accession_number,
+                "section": chunk.section,
+                "chunk_index": chunk.chunk_index,
+                "text": chunk.text,
+                "embedding": chunk.embedding,
+            }
+            for chunk in chunks
+        ]
 
-        for chunk in chunks:
-
-            filing_chunk = FilingChunk(
-                ticker=chunk.ticker,
-                form_type=chunk.form_type,
-                filing_date=datetime.strptime(chunk.filing_date,"%Y-%m-%d").date(),
-                accession_number=chunk.accession_number,
-                section=chunk.section,
-                chunk_index=chunk.chunk_index,
-                text=chunk.text,
-                embedding=chunk.embedding
+        try:
+            statement = insert(FilingChunk).values(rows)
+            statement = statement.on_conflict_do_nothing(
+                constraint="uq_filing_chunks_accession_section_index"
             )
+            result = self.session.execute(statement)
+            self.session.commit()
+            return result.rowcount or 0
+        except Exception:
+            self.session.rollback()
+            raise
 
-            filing_chunks.append(
-                filing_chunk
-            )
-
-        self.session.add_all(
-            filing_chunks
+    def filing_exists(self, accession_number: str) -> bool:
+        return (
+            self.session.query(FilingChunk.id)
+            .filter(FilingChunk.accession_number == accession_number)
+            .first()
+            is not None
         )
-
-        self.session.commit()
 
     def get_chunks(
             self,

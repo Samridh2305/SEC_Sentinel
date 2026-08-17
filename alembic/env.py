@@ -2,6 +2,7 @@ from logging.config import fileConfig
 from common.config import settings
 from db.database import Base
 from db.models.filing_chunk import FilingChunk
+from db.models.ingestion_job import IngestionJob
 from sqlalchemy import engine_from_config
 from sqlalchemy import pool
 

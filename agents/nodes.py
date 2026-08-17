@@ -2,6 +2,7 @@ from openai import OpenAI
 
 from agents.state import AgentState
 from common.config import settings
+from schema.schema import RouteDecision
 
 client=OpenAI(api_key=settings.OPENAI_API_KEY)
 
@@ -9,7 +10,7 @@ def router_node(
         state:AgentState
 ):
     query=state["query"]
-    response=client.responses.create(
+    response=client.responses.parse(
         model="gpt-4.1-mini",
         instructions="""
         You are the routing component of SEC Sentinel.
@@ -28,12 +29,11 @@ Return ONLY one of:
 ANSWER
 COMPARISON
 """,
-        input=query
+        input=query,
+        text_format=RouteDecision
     )
 
-    route=response.output_text.strip().upper()
-    if route not in ["ANSWER", "COMPARISON"]:
-        route = "ANSWER"
+    route = response.output_parsed.route
 
     return{
         "route": route

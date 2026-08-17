@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import BaseModel
 
 
@@ -40,7 +42,21 @@ class FilingDownloadResponse(BaseModel):
     chunks_created: int
     message: str
 
+
+class IngestionJobResponse(BaseModel):
+    job_id: str
+    status: str
+    ticker: str
+    form_type: str
+    requested_filing_date: str | None
+    accession_number: str | None = None
+    chunks_created: int | None = None
+    error_message: str | None = None
+
 class CompanyResponse(BaseModel):
     company: str
     ticker: str
     cik: str
+
+class RouteDecision(BaseModel):
+    route: Literal["ANSWER", "COMPARISON"]

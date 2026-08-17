@@ -1,41 +1,37 @@
-from fastapi import APIRouter
+from fastapi import (
+    APIRouter,
+    Depends)
+from sqlalchemy.orm import Session
 
-from db.database import SessionLocal
+from db.database import get_db
 from db.repositories.filing_chunk_repository import FilingChunkRepository
-
 from generation.comparison_generator import ComparisonGenerator
-
 from schema.schema import (
     ComparisonRequest,
     ComparisonResponse
 )
-
 from services.comparison_service import ComparisonService
-
 
 router = APIRouter(
     tags=["Compare"]
 )
 
-
-session = SessionLocal()
-
-repository = FilingChunkRepository(
-    session=session
-)
-
 comparison_generator = ComparisonGenerator()
-
-comparison_service = ComparisonService(
-    repository=repository,
-    comparison_generator=comparison_generator
-)
-
 
 @router.post("/comparison")
 def comparison(
-    request: ComparisonRequest
+    request: ComparisonRequest,
+    session: Session = Depends(get_db),
 ) -> ComparisonResponse:
+
+    repository = FilingChunkRepository(
+        session=session
+    )
+
+    comparison_service = ComparisonService(
+        repository=repository,
+        comparison_generator=comparison_generator
+    )
 
     result = comparison_service.compare(
         ticker=request.ticker,
