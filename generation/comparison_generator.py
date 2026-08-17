@@ -1,7 +1,9 @@
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 from common.config import settings
+from common.logger import logger
 from db.models.filing_chunk import FilingChunk
+from exceptions.custom_exceptions import ServiceException
 from models.comparision import Comparison
 from prompts.comparision_prompt import (
     COMPARISON_SYSTEM_PROMPT,
@@ -59,11 +61,15 @@ class ComparisonGenerator:
         )
 
 
-        response = self.client.responses.create(
-            model=self.model,
-            instructions=COMPARISON_SYSTEM_PROMPT,
-            input=user_prompt
-        )
+        try:
+            response = self.client.responses.create(
+                model=self.model,
+                instructions=COMPARISON_SYSTEM_PROMPT,
+                input=user_prompt
+            )
+        except OpenAIError as exc:
+            logger.exception("Could not generate filing comparison")
+            raise ServiceException("The AI service is temporarily unavailable.") from exc
 
         return Comparison(
             text=response.output_text,

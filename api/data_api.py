@@ -1,6 +1,5 @@
 from fastapi import (
     APIRouter,
-    HTTPException,
     BackgroundTasks,
     Depends,
     status,
@@ -18,6 +17,7 @@ from schema.schema import (
 )
 from services.filing_service import FilingService
 from services.ingestion_job_worker import run_ingestion_job
+from exceptions.custom_exceptions import NotFoundException
 
 router = APIRouter(
     prefix="/filings",
@@ -39,31 +39,22 @@ def download_filing(
     background_tasks: BackgroundTasks,
     session: Session = Depends(get_db)
 ):
-    try:
-        jobs = IngestionJobRepository(session)
+    jobs = IngestionJobRepository(session)
+    job = jobs.create(
+        ticker=request.ticker,
+        form_type=request.form_type,
+        filing_date=request.filing_date,
+    )
 
-        job = jobs.create(
-            ticker=request.ticker,
-            form_type=request.form_type,
-            filing_date=request.filing_date,
-        )
+    background_tasks.add_task(run_ingestion_job, job.id)
 
-        background_tasks.add_task(run_ingestion_job, job.id)
-
-        return IngestionJobResponse(
-            job_id=job.id,
-            status=job.status,
-            ticker=job.ticker,
-            form_type=job.form_type,
-            requested_filing_date=job.requested_filing_date,
-        )
-
-    except ValueError as e:
-
-        raise HTTPException(
-            status_code=404,
-            detail=str(e)
-        )
+    return IngestionJobResponse(
+        job_id=job.id,
+        status=job.status,
+        ticker=job.ticker,
+        form_type=job.form_type,
+        requested_filing_date=job.requested_filing_date,
+    )
 
 
 @router.get(
@@ -77,10 +68,7 @@ def get_ingestion_job(
     job = IngestionJobRepository(session).get(job_id)
 
     if job is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Ingestion job not found."
-        )
+        raise NotFoundException("Ingestion job not found.")
 
     return IngestionJobResponse(
         job_id=job.id,
@@ -108,16 +96,7 @@ def get_available_filings(
         sec_client=sec_client
     )
 
-    try:
-
-        return filing_service.get_available_filings(
-            ticker=ticker,
-            form_type=form_type
-        )
-
-    except ValueError as e:
-
-        raise HTTPException(
-            status_code=404,
-            detail=str(e)
-        )
+    return filing_service.get_available_filings(
+        ticker=ticker,
+        form_type=form_type
+    )

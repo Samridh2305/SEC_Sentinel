@@ -2,8 +2,10 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
+from common.logger import logger
 from db.models.filing_chunk import FilingChunk
 from embeddings.embedder import Embedder
+from exceptions.custom_exceptions import DatabaseException
 
 
 class VectorRetriever:
@@ -62,17 +64,21 @@ class VectorRetriever:
                 FilingChunk.section == section
             )
 
-        # 7. Perform cosine similarity search
-        results = (
-            db_query
-            .order_by(
-                FilingChunk.embedding.cosine_distance(
-                    query_embedding
+        try:
+            # 7. Perform cosine similarity search
+            results = (
+                db_query
+                .order_by(
+                    FilingChunk.embedding.cosine_distance(
+                        query_embedding
+                    )
                 )
+                .limit(top_k)
+                .all()
             )
-            .limit(top_k)
-            .all()
-        )
+        except Exception as exc:
+            logger.exception("Could not retrieve filing chunks")
+            raise DatabaseException() from exc
 
         # 8. Return most relevant chunks
         return results

@@ -1,6 +1,8 @@
 from sqlalchemy.orm import Session
 
+from common.logger import logger
 from db.models.ingestion_job import IngestionJob
+from exceptions.custom_exceptions import DatabaseException
 
 
 class IngestionJobRepository:
@@ -41,6 +43,7 @@ class IngestionJobRepository:
     def _commit(self) -> None:
         try:
             self.session.commit()
-        except Exception:
+        except Exception as exc:
             self.session.rollback()
-            raise
+            logger.exception("Could not save ingestion job")
+            raise DatabaseException() from exc

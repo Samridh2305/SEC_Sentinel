@@ -2,7 +2,7 @@ import logging
 
 
 def setup_logger() -> logging.Logger:
-    logger = logging.getLogger("medical_report_app")
+    logger = logging.getLogger("sec_sentinel")
 
     if not logger.handlers:
         logger.setLevel(logging.INFO)

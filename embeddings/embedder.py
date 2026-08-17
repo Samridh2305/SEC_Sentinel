@@ -1,4 +1,6 @@
 from sentence_transformers import SentenceTransformer
+from common.logger import logger
+from exceptions.custom_exceptions import ProcessingException
 from models.chunk import Chunk
 
 class Embedder:
@@ -18,7 +20,11 @@ class Embedder:
             for chunk in chunks
         ]
 
-        embeddings = self.model.encode(texts, normalize_embeddings=True)
+        try:
+            embeddings = self.model.encode(texts, normalize_embeddings=True)
+        except Exception as exc:
+            logger.exception("Could not embed filing chunks")
+            raise ProcessingException("Could not embed filing chunks.") from exc
 
         for chunk,embedding in zip(chunks, embeddings):
             chunk.embedding = (embedding.tolist())
@@ -29,10 +35,14 @@ class Embedder:
             self,
             query: str
     ) -> list[float]:
-        embedding = self.model.encode(
-            query,
-            normalize_embeddings=True
-        )
+        try:
+            embedding = self.model.encode(
+                query,
+                normalize_embeddings=True
+            )
+        except Exception as exc:
+            logger.exception("Could not embed query")
+            raise ProcessingException("Could not embed query.") from exc
 
         return embedding.tolist()
 

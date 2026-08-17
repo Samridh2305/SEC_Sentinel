@@ -1,4 +1,5 @@
 from ingestion.sec_client import SECClient
+from exceptions.custom_exceptions import NotFoundException
 
 
 class CompanyService:
@@ -19,7 +20,7 @@ class CompanyService:
         )
 
         if not results:
-            raise ValueError(
+            raise NotFoundException(
                 f"No SEC company found matching "
                 f"'{company_name}'."
             )

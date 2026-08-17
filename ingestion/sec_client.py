@@ -1,6 +1,8 @@
 import requests
 
 from common.config import settings
+from common.logger import logger
+from exceptions.custom_exceptions import NotFoundException, ServiceException
 
 
 class SECClient:
@@ -17,15 +19,16 @@ class SECClient:
         return self.companies
 
     def _load_companies(self) -> dict:
+        return self._get_json(settings.SEC_COMPANY_TICKERS_URL)
 
-        response = requests.get(
-            settings.SEC_COMPANY_TICKERS_URL,
-            headers=self.headers,
-            timeout=30
-        )
-        response.raise_for_status()
-
-        return response.json()
+    def _get_json(self, url: str) -> dict:
+        try:
+            response = requests.get(url, headers=self.headers, timeout=30)
+            response.raise_for_status()
+            return response.json()
+        except (requests.RequestException, ValueError) as exc:
+            logger.exception("SEC request failed for %s", url)
+            raise ServiceException() from exc
 
     def get_company_cik(
             self,
@@ -41,7 +44,7 @@ class SECClient:
 
                 return cik.zfill(10)
 
-        raise ValueError(
+        raise NotFoundException(
             f"Ticker {ticker} not found."
         )
 
@@ -79,15 +82,7 @@ class SECClient:
             cik=cik
         )
 
-        response = requests.get(
-            url,
-            headers=self.headers,
-            timeout=30
-        )
-
-        response.raise_for_status()
-
-        return response.json()
+        return self._get_json(url)
 
 
     def get_latest_filing(
@@ -109,7 +104,7 @@ class SECClient:
                     "accessionNumber": recent["accessionNumber"][index],
                     "primaryDocument": recent["primaryDocument"][index]
                 }
-        raise ValueError(
+        raise NotFoundException(
             f"No {form_type} filing found."
         )
 
@@ -136,7 +131,7 @@ class SECClient:
                     "primaryDocument": recent["primaryDocument"][index]
                 }
 
-        raise ValueError(
+        raise NotFoundException(
             f"No {form_type} filing found for {filing_date}."
         )
 
@@ -171,7 +166,7 @@ class SECClient:
                 })
 
         if not results:
-            raise ValueError(
+            raise NotFoundException(
                 f"No {form_type} filings found for {ticker}."
             )
 

@@ -8,21 +8,26 @@ class AppException(Exception):
             self.detail = detail
 
 
-class ReportExtractionException(AppException):
-    status_code = 422
-    detail = "Could not extract readable text from file."
+class DatabaseException(AppException):
+    status_code = 503
+    detail = "The database is temporarily unavailable."
 
 
-class DatabaseSaveException(AppException):
-    status_code = 500
-    detail = "Could not save report to database."
-
-
-class ReportNotFoundException(AppException):
-    status_code = 404
-    detail = "Report not found."
-
-
-class InvalidReportIdException(AppException):
+class BadRequestException(AppException):
     status_code = 400
-    detail = "Invalid report ID."
+    detail = "The request is invalid."
+
+
+class NotFoundException(AppException):
+    status_code = 404
+    detail = "The requested resource was not found."
+
+
+class ServiceException(AppException):
+    status_code = 502
+    detail = "An external service is temporarily unavailable."
+
+
+class ProcessingException(AppException):
+    status_code = 422
+    detail = "The request could not be processed."

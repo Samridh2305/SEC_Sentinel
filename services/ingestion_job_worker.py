@@ -1,5 +1,4 @@
-import logging
-
+from common.logger import logger
 from db.database import SessionLocal
 from db.repositories.filing_chunk_repository import FilingChunkRepository
 from db.repositories.ingestion_job_repository import IngestionJobRepository
@@ -11,9 +10,6 @@ from ingestion.filing_downloader import FilingDownloader
 from ingestion.ingestion_pipeline import IngestionPipeline
 from ingestion.sec_client import SECClient
 from services.filing_service import FilingService
-
-
-logger = logging.getLogger(__name__)
 
 
 sec_client = SECClient()

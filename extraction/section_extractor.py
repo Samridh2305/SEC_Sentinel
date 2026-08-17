@@ -1,5 +1,6 @@
 from collections import defaultdict
 
+from exceptions.custom_exceptions import BadRequestException
 from models.section_match import SectionMatch
 from services.classes import FORM_CONFIG, PART_PATTERN
 
@@ -10,13 +11,12 @@ class SectionExtractor:
             self,
             form_type: str
     ):
-        try:
-            return FORM_CONFIG[form_type]
-
-        except KeyError:
-            raise ValueError(
+        config = FORM_CONFIG.get(form_type)
+        if config is None:
+            raise BadRequestException(
                 f"Unsupported form type: {form_type}"
             )
+        return config
 
     def extract_sections(
         self,

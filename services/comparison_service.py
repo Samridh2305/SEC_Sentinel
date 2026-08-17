@@ -1,6 +1,7 @@
 
 from db.repositories.filing_chunk_repository import FilingChunkRepository
 from generation.comparison_generator import ComparisonGenerator
+from exceptions.custom_exceptions import NotFoundException
 
 
 class ComparisonService:
@@ -29,7 +30,7 @@ class ComparisonService:
             )
         )
         if previous_filing is None:
-            raise ValueError(
+            raise NotFoundException(
                 "No previous filing found."
             )
         previous_chunks = (

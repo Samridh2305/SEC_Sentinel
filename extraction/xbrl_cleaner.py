@@ -2,6 +2,8 @@ import re
 
 from bs4 import BeautifulSoup
 
+from exceptions.custom_exceptions import ProcessingException
+
 
 class XBRLCleaner:
 
@@ -53,7 +55,7 @@ class XBRLCleaner:
         body = soup.body
 
         if body is None:
-            raise ValueError(
+            raise ProcessingException(
                 "No <body> found."
             )
 

@@ -1,3 +1,6 @@
+from exceptions.custom_exceptions import ProcessingException
+
+
 class FilingService:
 
     def __init__(
@@ -17,7 +20,7 @@ class FilingService:
         filing_date:str |None=None
     ):
         if self.pipeline is None:
-            raise RuntimeError(
+            raise ProcessingException(
                 "A pipeline is required to download and ingest a filing."
             )
 

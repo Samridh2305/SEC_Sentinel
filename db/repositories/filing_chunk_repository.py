@@ -3,7 +3,9 @@ from datetime import datetime
 from sqlalchemy.orm import Session
 from sqlalchemy.dialects.postgresql import insert
 
+from common.logger import logger
 from db.models.filing_chunk import FilingChunk
+from exceptions.custom_exceptions import DatabaseException
 from models.chunk import Chunk
 
 
@@ -44,9 +46,10 @@ class FilingChunkRepository:
             result = self.session.execute(statement)
             self.session.commit()
             return result.rowcount or 0
-        except Exception:
+        except Exception as exc:
             self.session.rollback()
-            raise
+            logger.exception("Could not save filing chunks")
+            raise DatabaseException() from exc
 
     def filing_exists(self, accession_number: str) -> bool:
         return (

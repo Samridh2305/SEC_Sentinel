@@ -11,7 +11,7 @@ TEN_Q_PATTERN = re.compile(
 )
 
 EIGHT_K_PATTERN = re.compile(
-    r"\bItem\s+\d+\.\d+",
+    r"\bItem\s+(?:\d+\.\d+|\d+\.)",
     re.IGNORECASE
 )
 PART_PATTERN = re.compile(
@@ -61,6 +61,9 @@ TEN_Q_SECTIONS = {
 }
 
 EIGHT_K_SECTIONS = {
+    # Older 8-K filings used whole-number item headings.
+    "item 2.": "Acquisition or Disposition of Assets",
+    "item 7.": "Financial Statements and Exhibits",
     "item 1.01": "Entry into a Material Definitive Agreement",
     "item 1.02": "Termination of a Material Definitive Agreement",
     "item 2.01": "Completion of Acquisition or Disposition",

@@ -7,6 +7,8 @@ from embeddings.embedder import Embedder
 from db.repositories.filing_chunk_repository import (
     FilingChunkRepository
 )
+from common.logger import logger
+from exceptions.custom_exceptions import ProcessingException
 from models.filing_metadata import FilingMetadata
 
 
@@ -52,12 +54,27 @@ class IngestionPipeline:
             self.section_extractor
             .extract_sections(text=text,form_type=metadata.form_type)
         )
+        if not sections:
+            logger.error(
+                "No sections extracted for %s filing %s",
+                metadata.form_type,
+                metadata.accession_number,
+            )
+            raise ProcessingException(
+                "No recognized sections were found in the filing."
+            )
 
         # 5. Split sections into chunks
         chunks = self.chunker.chunk_sections(
             sections=sections,
             metadata=metadata
         )
+        if not chunks:
+            logger.error(
+                "No chunks created for filing %s",
+                metadata.accession_number,
+            )
+            raise ProcessingException("No chunks could be created from the filing.")
 
         # 6. Generate embeddings
         chunks = self.embedder.embed_chunks(

@@ -1,24 +1,42 @@
-import logging
-import os
-
-import requests
 from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
-from openai import OpenAIError
-from sqlalchemy.exc import SQLAlchemyError
-from starlette.middleware.cors import CORSMiddleware
 
 from api.answer_api import router as answer_router
-from api.compare_api import router as comparison_router
 from api.ask_api import router as ask_router
-from api.data_api import router as data_router
 from api.company_api import router as company_router
-
+from api.compare_api import router as comparison_router
+from api.data_api import router as data_router
+from common.logger import logger
+from exceptions.custom_exceptions import AppException, BadRequestException
+from exceptions.exception_handler import app_exception_handler
 
 app = FastAPI(
     title="SEC Sentinel"
 )
+
+app.add_exception_handler(AppException, app_exception_handler)
+
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(
+        request: Request,
+        exc: RequestValidationError,
+):
+    return await app_exception_handler(
+        request,
+        BadRequestException("The request data is invalid."),
+    )
+
+
+@app.exception_handler(Exception)
+async def unexpected_exception_handler(request: Request, exc: Exception):
+    logger.exception("Unexpected application failure")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": AppException.detail},
+    )
+
 
 app.include_router(
     answer_router
@@ -39,9 +57,10 @@ app.include_router(
 app.include_router(
     company_router
 )
+
+
 @app.get("/")
 def root():
-
     return {
         "message": "SEC Sentinel API is running"
     }

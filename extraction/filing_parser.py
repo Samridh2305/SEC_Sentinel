@@ -1,6 +1,9 @@
 from pathlib import Path
 from bs4 import BeautifulSoup
 
+from common.logger import logger
+from exceptions.custom_exceptions import ProcessingException
+
 class FilingParser:
 
     def parse(
@@ -8,7 +11,11 @@ class FilingParser:
         filing_path: Path
     )-> BeautifulSoup:
 
-        html= filing_path.read_text(encoding="utf-8")
+        try:
+            html = filing_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            logger.exception("Could not read filing at %s", filing_path)
+            raise ProcessingException("Could not read the filing.") from exc
 
         soup = BeautifulSoup(html, "html.parser")
 
@@ -39,7 +46,7 @@ class FilingParser:
         body = soup.body
 
         if body is None:
-            raise ValueError(
+            raise ProcessingException(
                 "No <body> found."
             )
 
