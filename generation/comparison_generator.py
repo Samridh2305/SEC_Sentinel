@@ -28,6 +28,7 @@ class ComparisonGenerator:
     def generate_comparison(
         self,
         query: str,
+        section:str | None,
         previous_chunks: list[FilingChunk],
         current_chunks: list[FilingChunk],
     ) -> Comparison:
@@ -55,6 +56,7 @@ class ComparisonGenerator:
         )
 
         user_prompt = COMPARISON_PROMPT.format(
+            section=section,
             previous_context=previous_context,
             current_context=current_context,
             query=query

@@ -11,6 +11,10 @@ client=OpenAI(api_key=settings.OPENAI_API_KEY)
 def router_node(
         state:AgentState
 ):
+    # Supplying an exact comparison date is an explicit comparison request.
+    if state.get("comparison_filing_date"):
+        return {"route": "COMPARISON"}
+
     query=state["query"]
     try:
         response=client.responses.parse(
@@ -70,6 +74,7 @@ def comparison_node(
         ticker=state["ticker"],
         form_type=state["form_type"],
         filing_date=state["filing_date"],
+        comparison_filing_date=state["comparison_filing_date"],
         section=state["section"],
         query=state["query"]
     )

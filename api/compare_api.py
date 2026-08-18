@@ -37,6 +37,7 @@ def comparison(
         ticker=request.ticker,
         form_type=request.form_type,
         filing_date=request.filing_date,
+        comparison_filing_date=request.comparison_filing_date,
         section=request.section,
         query=request.query
     )

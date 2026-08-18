@@ -7,6 +7,7 @@ class AnswerRequest(BaseModel):
     ticker: str
     form_type: str
     filing_date: str
+    comparison_filing_date: str | None = None
     query: str
     section: str | None = None
 
@@ -17,7 +18,8 @@ class ComparisonRequest(BaseModel):
     ticker: str
     form_type: str
     filing_date: str
-    section: str
+    comparison_filing_date: str | None = None
+    section: str | None = None
     query: str
 
 class ComparisonResponse(BaseModel):
