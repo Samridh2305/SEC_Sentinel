@@ -3,25 +3,20 @@ from fastapi import (
     Depends
 )
 from sqlalchemy.orm import Session
-from db.database import get_db
-from db.repositories.filing_chunk_repository import FilingChunkRepository
-
-from embeddings.embedder import Embedder
-
-from retrieval.vector_retriever import VectorRetriever
-
-from generation.answer_generator import AnswerGenerator
-from generation.comparison_generator import ComparisonGenerator
-
-from services.answer_service import AnswerService
-from services.comparison_service import ComparisonService
 
 from agents.graph import build_graph
-
+from db.database import get_db
+from db.repositories.filing_chunk_repository import FilingChunkRepository
+from embeddings.embedder import Embedder
+from generation.answer_generator import AnswerGenerator
+from generation.comparison_generator import ComparisonGenerator
+from retrieval.vector_retriever import VectorRetriever
 from schema.schema import (
     AnswerRequest,
     AnswerResponse
 )
+from services.answer_service import AnswerService
+from services.comparison_service import ComparisonService
 
 router = APIRouter(
     tags=["AI"]

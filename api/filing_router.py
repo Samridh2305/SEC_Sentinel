@@ -7,21 +7,21 @@ from fastapi import (
 from sqlalchemy.orm import Session
 
 from db.database import get_db
+from db.repositories.filing_chunk_repository import FilingChunkRepository
 from db.repositories.ingestion_job_repository import IngestionJobRepository
+from exceptions.custom_exceptions import NotFoundException
 from ingestion.filing_downloader import FilingDownloader
 from ingestion.sec_client import SECClient
 from schema.schema import (
     FilingDownloadRequest,
-    FilingInfo,
-    IngestionJobResponse,
+    IngestionJobResponse, FilingItem,
 )
-from services.filing_service import FilingService
+from schema.schema import FilingResponse
 from services.ingestion_job_worker import run_ingestion_job
-from exceptions.custom_exceptions import NotFoundException
 
 router = APIRouter(
     prefix="/filings",
-    tags=["Filings"]
+    tags=["Filings"],
 )
 
 sec_client = SECClient()
@@ -29,6 +29,37 @@ sec_client = SECClient()
 downloader = FilingDownloader(
     sec_client=sec_client
 )
+
+
+@router.get(
+    "/available",
+    response_model=FilingResponse,
+)
+def get_all_filings(
+    ticker: str,
+    form_type: str,
+    db: Session = Depends(get_db),
+):
+    repository = FilingChunkRepository(db)
+
+    filings = repository.get_available_filings_in_db(
+        ticker=ticker,
+        form_type=form_type,
+    )
+
+    return FilingResponse(
+        ticker=ticker,
+        form_type=form_type,
+        filings=[
+            FilingItem(
+                filing_date=filing.filing_date,
+                accession_number=filing.accession_number,
+            )
+            for filing in filings
+        ],
+    )
+
+
 @router.post(
     "/download",
     response_model=IngestionJobResponse,
@@ -79,24 +110,4 @@ def get_ingestion_job(
         accession_number=job.accession_number,
         chunks_created=job.chunks_created,
         error_message=job.error_message,
-    )
-
-@router.get(
-    "/available",
-    response_model=list[FilingInfo]
-)
-def get_available_filings(
-    ticker: str,
-    form_type: str
-):
-
-    filing_service = FilingService(
-        downloader=downloader,
-        pipeline=None,
-        sec_client=sec_client
-    )
-
-    return filing_service.get_available_filings(
-        ticker=ticker,
-        form_type=form_type
     )

@@ -59,6 +59,35 @@ class FilingChunkRepository:
             is not None
         )
 
+    def get_available_filings_in_db(
+            self,
+            ticker: str | None = None,
+            form_type: str | None = None,
+    ):
+        query = (
+            self.session.query(
+                FilingChunk.ticker,
+                FilingChunk.form_type,
+                FilingChunk.filing_date,
+                FilingChunk.accession_number,
+            )
+            .distinct()
+        )
+
+        if ticker:
+            query = query.filter(
+                FilingChunk.ticker == ticker
+            )
+
+        if form_type:
+            query = query.filter(
+                FilingChunk.form_type == form_type
+            )
+
+        return query.order_by(
+            FilingChunk.filing_date.desc()
+        ).all()
+
     def get_chunks(
             self,
             ticker: str,

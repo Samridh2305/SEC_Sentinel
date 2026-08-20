@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Literal
 
 from pydantic import BaseModel
@@ -44,6 +45,15 @@ class FilingDownloadResponse(BaseModel):
     chunks_created: int
     message: str
 
+class FilingItem(BaseModel):
+    filing_date: date
+    accession_number: str
+
+
+class FilingResponse(BaseModel):
+    ticker: str
+    form_type: str
+    filings: list[FilingItem]
 
 class IngestionJobResponse(BaseModel):
     job_id: str
