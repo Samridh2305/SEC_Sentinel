@@ -11,6 +11,7 @@ function CompanySearch({ onSelect }) {
     const handleSearch = async () => {
 
         if (!query.trim()) {
+            setResults([]);
             return;
         }
 
@@ -25,15 +26,44 @@ function CompanySearch({ onSelect }) {
 
         } catch (error) {
 
-            console.error("Company search failed:", error);
+            console.error(
+                "Company search failed:",
+                error
+            );
 
-            setError(error.message);
+            setError(
+                error.message ||
+                "Company search failed."
+            );
+
+            setResults([]);
 
         } finally {
 
             setLoading(false);
-
         }
+    };
+
+    const handleQueryChange = (event) => {
+
+        setQuery(event.target.value);
+
+        // Hide old results when user starts a new search
+        setResults([]);
+
+        setError(null);
+    };
+
+    const handleCompanySelect = (company) => {
+
+        // Replace company name with ticker
+        setQuery(company.ticker);
+
+        // Hide search results
+        setResults([]);
+
+        // Tell Dashboard which company was selected
+        onSelect(company);
     };
 
     return (
@@ -47,9 +77,7 @@ function CompanySearch({ onSelect }) {
                     type="text"
                     value={query}
                     placeholder="Search company..."
-                    onChange={(event) =>
-                        setQuery(event.target.value)
-                    }
+                    onChange={handleQueryChange}
                     onKeyDown={(event) => {
                         if (event.key === "Enter") {
                             handleSearch();
@@ -62,7 +90,9 @@ function CompanySearch({ onSelect }) {
                     onClick={handleSearch}
                     disabled={loading}
                 >
-                    {loading ? "Searching..." : "Search"}
+                    {loading
+                        ? "Searching..."
+                        : "Search"}
                 </button>
 
             </div>
@@ -80,9 +110,11 @@ function CompanySearch({ onSelect }) {
 
                         <button
                             type="button"
-                            key={company.cik}
+                            key={`${company.cik}-${company.ticker}`}
                             className="company-result"
-                            onClick={() => onSelect(company)}
+                            onClick={() =>
+                                handleCompanySelect(company)
+                            }
                         >
 
                             <strong>

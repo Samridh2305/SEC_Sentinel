@@ -1,12 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
-import Sidebar from "../components/Sidebar";
 import CompanySearch from "../components/CompanySearch";
 import FilingSelector from "../components/FilingSelector";
 import QuestionInput from "../components/QuestionInput";
 import AnalysisResult from "../components/AnalysisResult";
 
+import {
+    getSecFilings,
+    getAllFilings,
+    askSentinel,
+    downloadFiling,
+    getIngestionJob
+} from "../services/api";
+
+
 function Dashboard() {
+
+    // -------------------------
+    // State
+    // -------------------------
 
     const [selectedCompany, setSelectedCompany] = useState(null);
 
@@ -15,6 +27,7 @@ function Dashboard() {
     const [filings, setFilings] = useState([]);
 
     const [currentFiling, setCurrentFiling] = useState("");
+
     const [previousFiling, setPreviousFiling] = useState("");
 
     const [question, setQuestion] = useState(
@@ -25,12 +38,152 @@ function Dashboard() {
 
     const [loading, setLoading] = useState(false);
 
+    const [loadingFilings, setLoadingFilings] = useState(false);
+
+    const [downloadingFilings, setDownloadingFilings] = useState(
+        new Set()
+    );
+
     const [error, setError] = useState(null);
 
 
+    // -------------------------
+    // Load filings
+    // -------------------------
+
+    useEffect(() => {
+
+        if (!selectedCompany) {
+            return;
+        }
+
+        const loadFilings = async () => {
+
+            setLoadingFilings(true);
+            setError(null);
+
+            try {
+
+                // --------------------------------
+                // 1. Get filings available from SEC
+                // --------------------------------
+
+                const secFilings = await getSecFilings(
+                    selectedCompany.ticker,
+                    formType
+                );
+
+
+                // --------------------------------
+                // 2. Get filings already in our DB
+                // --------------------------------
+
+                const localData = await getAllFilings(
+                    selectedCompany.ticker,
+                    formType
+                );
+
+
+                console.log(
+                    "SEC filings:",
+                    secFilings
+                );
+
+                console.log(
+                    "Local filings:",
+                    localData
+                );
+
+
+                // --------------------------------
+                // 3. Get dates already in our DB
+                // --------------------------------
+
+                const localDates = new Set(
+                    localData.filings.map(
+                        filing => filing.filing_date
+                    )
+                );
+
+
+                // --------------------------------
+                // 4. Merge SEC + local information
+                // --------------------------------
+
+                const mergedFilings = secFilings.map(
+                    filing => ({
+                        ...filing,
+
+                        in_db: localDates.has(
+                            filing.filing_date
+                        )
+                    })
+                );
+
+
+                console.log(
+                    "Merged filings:",
+                    mergedFilings
+                );
+
+
+                // --------------------------------
+                // 5. Sort and store filings
+                // --------------------------------
+
+                const sortedFilings = [...mergedFilings].sort(
+                    (a, b) =>
+                        new Date(b.filing_date) -
+                        new Date(a.filing_date)
+                );
+
+                setFilings(sortedFilings);
+
+                // Automatically select newest
+                setCurrentFiling(
+                    sortedFilings[0]?.filing_date ?? ""
+                );
+
+                // Automatically select second-newest
+                setPreviousFiling(
+                    sortedFilings[1]?.filing_date ?? ""
+                );
+
+            } catch (error) {
+
+                console.error(
+                    "Failed to load filings:",
+                    error
+                );
+
+                setError(
+                    error.message ||
+                    "Failed to load filings."
+                );
+
+            } finally {
+
+                setLoadingFilings(false);
+
+            }
+        };
+
+
+        loadFilings();
+
+    }, [selectedCompany, formType]);
+
+
+    // -------------------------
+    // Company selected
+    // -------------------------
+
     const handleCompanySelect = (company) => {
 
-        console.log("Selected company:", company);
+        console.log(
+            "Selected company:",
+            company
+        );
 
         setSelectedCompany(company);
 
@@ -45,75 +198,381 @@ function Dashboard() {
     };
 
 
+    // -------------------------
+    // Filing selection
+    // -------------------------
+
+    const handleCurrentFilingChange = (event) => {
+
+        const value = event.target.value;
+
+        if (value === previousFiling) {
+
+            setError(
+                "Current and Previous filings must be different."
+            );
+
+            return;
+        }
+
+        setError(null);
+        setCurrentFiling(value);
+    };
+
+
+    const handlePreviousFilingChange = (event) => {
+
+        const value = event.target.value;
+
+        if (value === currentFiling) {
+
+            setError(
+                "Current and Previous filings must be different."
+            );
+
+            return;
+        }
+
+        setError(null);
+        setPreviousFiling(value);
+    };
+
+
+    // -------------------------
+    // Analyze
+    // -------------------------
+
     const handleAnalyze = async () => {
 
         if (!selectedCompany) {
 
-            setError("Please select a company.");
+            setError(
+                "Please select a company."
+            );
 
             return;
         }
+
 
         if (!currentFiling) {
 
-            setError("Please select a current filing.");
+            setError(
+                "Please select a current filing."
+            );
 
             return;
         }
+
 
         if (!previousFiling) {
 
-            setError("Please select a previous filing.");
+            setError(
+                "Please select a previous filing."
+            );
 
             return;
         }
+
+
+        if (currentFiling === previousFiling) {
+
+            setError(
+                "Current and Previous filings must be different."
+            );
+
+            return;
+        }
+
+
+        const current = filings.find(
+            filing =>
+                filing.filing_date === currentFiling
+        );
+
+        const previous = filings.find(
+            filing =>
+                filing.filing_date === previousFiling
+        );
+
+
+        if (!current?.in_db) {
+
+            setError(
+                "The current filing has not been downloaded yet."
+            );
+
+            return;
+        }
+
+
+        if (!previous?.in_db) {
+
+            setError(
+                "The previous filing has not been downloaded yet."
+            );
+
+            return;
+        }
+
 
         if (!question.trim()) {
 
-            setError("Please enter a question.");
+            setError(
+                "Please enter a question."
+            );
 
             return;
         }
+
 
         setLoading(true);
         setError(null);
 
+
         try {
 
-            // We will connect /ask here next.
+            const response = await askSentinel({
 
-            console.log("Analysis request:", {
-                ticker: selectedCompany.ticker,
-                form_type: formType,
-                filing_date: currentFiling,
-                comparison_filing_date: previousFiling,
-                query: question,
-                section: "Risk Factors"
+                ticker:
+                    selectedCompany.ticker,
+
+                form_type:
+                    formType,
+
+                filing_date:
+                    currentFiling,
+
+                comparison_filing_date:
+                    previousFiling,
+
+                query:
+                    question
+
             });
+
+
+            console.log(
+                "Analysis response:",
+                response
+            );
+
+
+            setResult(response);
 
         } catch (error) {
 
-            console.error("Analysis failed:", error);
+            console.error(
+                "Analysis failed:",
+                error
+            );
 
             setError(
                 error.message ||
                 "Something went wrong while analyzing the filing."
             );
 
+            setResult(null);
+
         } finally {
 
             setLoading(false);
+
         }
     };
 
+
+    // -------------------------
+    // Poll ingestion job
+    // -------------------------
+
+    const pollIngestionJob = async (jobId) => {
+
+        while (true) {
+
+            const job = await getIngestionJob(jobId);
+
+            console.log(
+                "Ingestion job status:",
+                job
+            );
+
+
+            if (job.status === "COMPLETED") {
+
+                return job;
+
+            }
+
+
+            if (job.status === "FAILED") {
+
+                throw new Error(
+                    job.error_message ||
+                    "Filing ingestion failed."
+                );
+
+            }
+
+
+            await new Promise(
+                resolve =>
+                    setTimeout(resolve, 1500)
+            );
+        }
+    };
+
+
+    // -------------------------
+    // Download filing
+    // -------------------------
+
+    const handleDownload = async (filing) => {
+
+        if (!selectedCompany) {
+            return;
+        }
+
+
+        const filingDate = filing.filing_date;
+
+        setError(null);
+
+
+        // Add this filing to downloading set
+        setDownloadingFilings(prev => {
+
+            const next = new Set(prev);
+
+            next.add(filingDate);
+
+            return next;
+
+        });
+
+
+        try {
+
+            // --------------------------------
+            // Start ingestion job
+            // --------------------------------
+
+            const job = await downloadFiling(
+                selectedCompany.ticker,
+                formType,
+                filingDate
+            );
+
+
+            console.log(
+                "Started ingestion:",
+                job
+            );
+
+
+            // --------------------------------
+            // Wait for ingestion to finish
+            // --------------------------------
+
+            const completedJob =
+                await pollIngestionJob(
+                    job.job_id
+                );
+
+
+            console.log(
+                "Ingestion completed:",
+                completedJob
+            );
+
+
+            // --------------------------------
+            // Refresh filings
+            // --------------------------------
+
+            const secFilings =
+                await getSecFilings(
+                    selectedCompany.ticker,
+                    formType
+                );
+
+
+            const localData =
+                await getAllFilings(
+                    selectedCompany.ticker,
+                    formType
+                );
+
+
+            const localDates = new Set(
+                localData.filings.map(
+                    filing =>
+                        filing.filing_date
+                )
+            );
+
+
+            const mergedFilings =
+                secFilings.map(
+                    filing => ({
+                        ...filing,
+
+                        in_db:
+                            localDates.has(
+                                filing.filing_date
+                            )
+                    })
+                );
+
+
+            const sortedFilings =
+                [...mergedFilings].sort(
+                    (a, b) =>
+                        new Date(b.filing_date) -
+                        new Date(a.filing_date)
+                );
+
+
+            setFilings(sortedFilings);
+
+        } catch (error) {
+
+            console.error(
+                "Filing download failed:",
+                error
+            );
+
+            setError(
+                error.message ||
+                "Failed to download filing."
+            );
+
+        } finally {
+
+            // Remove only THIS filing
+            setDownloadingFilings(prev => {
+
+                const next = new Set(prev);
+
+                next.delete(filingDate);
+
+                return next;
+
+            });
+        }
+    };
+
+
+    // -------------------------
+    // Render
+    // -------------------------
 
     return (
 
         <div className="app">
 
-            <Sidebar />
-
             <main className="main-content">
+
+                {/* Page Header */}
 
                 <div className="page-header">
 
@@ -161,7 +620,7 @@ function Dashboard() {
                     )}
 
 
-                    {/* Form Type */}
+                    {/* Filing Type */}
 
                     {selectedCompany && (
 
@@ -212,24 +671,34 @@ function Dashboard() {
                             <FilingSelector
                                 label="Current Filing"
                                 value={currentFiling}
-                                onChange={(event) =>
-                                    setCurrentFiling(
-                                        event.target.value
-                                    )
+                                onChange={
+                                    handleCurrentFilingChange
                                 }
                                 filings={filings}
+                                loading={loadingFilings}
+                                downloadingFilings={
+                                    downloadingFilings
+                                }
+                                onDownload={
+                                    handleDownload
+                                }
                             />
 
 
                             <FilingSelector
                                 label="Previous Filing"
                                 value={previousFiling}
-                                onChange={(event) =>
-                                    setPreviousFiling(
-                                        event.target.value
-                                    )
+                                onChange={
+                                    handlePreviousFilingChange
                                 }
                                 filings={filings}
+                                loading={loadingFilings}
+                                downloadingFilings={
+                                    downloadingFilings
+                                }
+                                onDownload={
+                                    handleDownload
+                                }
                             />
 
                         </div>
@@ -237,45 +706,21 @@ function Dashboard() {
                     )}
 
 
-                    {/* Section */}
+                    {/* No filings */}
 
-                    {selectedCompany && (
+                    {selectedCompany &&
+                        !loadingFilings &&
+                        filings.length === 0 && (
 
-                        <div className="field">
+                            <div className="error-message">
 
-                            <label>
-                                Section
-                            </label>
-
-                            <div className="select-wrapper">
-
-                                <select
-                                    defaultValue="Risk Factors"
-                                >
-
-                                    <option value="Risk Factors">
-                                        Risk Factors
-                                    </option>
-
-                                    <option value="Business">
-                                        Business
-                                    </option>
-
-                                    <option value="MD&A">
-                                        MD&A
-                                    </option>
-
-                                    <option value="Financial Statements">
-                                        Financial Statements
-                                    </option>
-
-                                </select>
+                                No {formType} filings are available
+                                for{" "}
+                                {selectedCompany.ticker}.
 
                             </div>
 
-                        </div>
-
-                    )}
+                        )}
 
 
                     {/* Question */}
@@ -290,7 +735,10 @@ function Dashboard() {
                                 )
                             }
                             onAnalyze={handleAnalyze}
-                            loading={loading}
+                            loading={
+                                loading ||
+                                loadingFilings
+                            }
                         />
 
                     )}
@@ -322,5 +770,6 @@ function Dashboard() {
         </div>
     );
 }
+
 
 export default Dashboard;
