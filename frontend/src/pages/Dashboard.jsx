@@ -30,6 +30,8 @@ function Dashboard() {
 
     const [previousFiling, setPreviousFiling] = useState("");
 
+    const [previousFilingSelected, setPreviousFilingSelected] = useState(false);
+
     const [question, setQuestion] = useState(
         "What changed in cybersecurity and supply-chain risks?"
     );
@@ -144,10 +146,8 @@ function Dashboard() {
                     sortedFilings[0]?.filing_date ?? ""
                 );
 
-                // Automatically select second-newest
-                setPreviousFiling(
-                    sortedFilings[1]?.filing_date ?? ""
-                );
+                setPreviousFiling("");
+                setPreviousFilingSelected(false);
 
             } catch (error) {
 
@@ -191,7 +191,8 @@ function Dashboard() {
 
         setCurrentFiling("");
         setPreviousFiling("");
-
+        setPreviousFilingSelected(false);
+        
         setResult(null);
 
         setError(null);
@@ -224,6 +225,13 @@ function Dashboard() {
 
         const value = event.target.value;
 
+        if (!value) {
+            setPreviousFiling("");
+            setPreviousFilingSelected(false);
+            setError(null);
+            return;
+        }
+
         if (value === currentFiling) {
 
             setError(
@@ -234,7 +242,11 @@ function Dashboard() {
         }
 
         setError(null);
+
         setPreviousFiling(value);
+
+        // User explicitly selected a comparison filing
+        setPreviousFilingSelected(true);
     };
 
 
@@ -242,58 +254,31 @@ function Dashboard() {
     // Analyze
     // -------------------------
 
+    
     const handleAnalyze = async () => {
 
         if (!selectedCompany) {
-
-            setError(
-                "Please select a company."
-            );
-
+            setError("Please select a company.");
             return;
         }
-
 
         if (!currentFiling) {
-
-            setError(
-                "Please select a current filing."
-            );
-
+            setError("Please select a current filing.");
             return;
         }
 
-
-        if (!previousFiling) {
-
-            setError(
-                "Please select a previous filing."
-            );
-
+        if (!question.trim()) {
+            setError("Please enter a question.");
             return;
         }
-
-
-        if (currentFiling === previousFiling) {
-
-            setError(
-                "Current and Previous filings must be different."
-            );
-
-            return;
-        }
-
 
         const current = filings.find(
-            filing =>
-                filing.filing_date === currentFiling
+            filing => filing.filing_date === currentFiling
         );
 
-        const previous = filings.find(
-            filing =>
-                filing.filing_date === previousFiling
-        );
-
+        // --------------------------------
+        // Current filing is ALWAYS required
+        // --------------------------------
 
         if (!current?.in_db) {
 
@@ -304,30 +289,52 @@ function Dashboard() {
             return;
         }
 
+        // --------------------------------
+        // Determine whether comparison
+        // was actually requested
+        // --------------------------------
 
-        if (!previous?.in_db) {
+        let comparisonDate = null;
 
-            setError(
-                "The previous filing has not been downloaded yet."
+        if (previousFilingSelected) {
+
+            const previous = filings.find(
+                filing =>
+                    filing.filing_date === previousFiling
             );
 
-            return;
+            // User explicitly requested comparison,
+            // therefore previous filing must exist.
+            if (!previous) {
+
+                setError(
+                    "Please select a previous filing."
+                );
+
+                return;
+            }
+
+            // User explicitly requested comparison,
+            // therefore previous filing must be downloaded.
+            if (!previous.in_db) {
+
+                setError(
+                    "The selected previous filing has not been downloaded yet."
+                );
+
+                return;
+            }
+
+            comparisonDate = previousFiling;
         }
 
-
-        if (!question.trim()) {
-
-            setError(
-                "Please enter a question."
-            );
-
-            return;
-        }
-
+        // --------------------------------
+        // Analyze
+        // --------------------------------
 
         setLoading(true);
         setError(null);
-
+        setResult(null);
 
         try {
 
@@ -343,19 +350,28 @@ function Dashboard() {
                     currentFiling,
 
                 comparison_filing_date:
-                    previousFiling,
+                    comparisonDate,
 
                 query:
-                    question
+                    question.trim()
 
             });
 
+            console.log(
+                "Analysis request:",
+                {
+                    ticker: selectedCompany.ticker,
+                    form_type: formType,
+                    filing_date: currentFiling,
+                    comparison_filing_date: comparisonDate,
+                    query: question.trim()
+                }
+            );
 
             console.log(
                 "Analysis response:",
                 response
             );
-
 
             setResult(response);
 
@@ -376,11 +392,8 @@ function Dashboard() {
         } finally {
 
             setLoading(false);
-
         }
     };
-
-
     // -------------------------
     // Poll ingestion job
     // -------------------------
@@ -686,7 +699,7 @@ function Dashboard() {
 
 
                             <FilingSelector
-                                label="Previous Filing"
+                                label="Previous Filing (Optional)"
                                 value={previousFiling}
                                 onChange={
                                     handlePreviousFilingChange
